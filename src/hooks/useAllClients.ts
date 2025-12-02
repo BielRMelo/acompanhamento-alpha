@@ -13,27 +13,27 @@ export function useAllClients() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
     setError(null);
 
-    supabase
-      .from("clients")
-      .select("*")
-      .order("name", { ascending: true })
-      .then(({ data, error: queryError }) => {
-        if (queryError) {
-          setError(new Error(queryError.message));
-          setClients([]);
-        } else {
-          setClients((data as Client[]) || []);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err : new Error("Erro desconhecido"));
-        setLoading(false);
-      });
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setClients((data as Client[]) || []);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Erro desconhecido"));
+      setClients([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => load(), []);
