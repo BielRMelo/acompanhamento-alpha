@@ -14,6 +14,8 @@ interface Task {
   created_by: string;
   created_at: string;
   sprint_key?: string;
+  admin_rejection_reason?: string;
+  admin_completion_link?: string;
   [key: string]: unknown;
 }
 

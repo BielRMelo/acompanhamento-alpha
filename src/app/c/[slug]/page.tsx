@@ -26,7 +26,8 @@ export default function ClientPage() {
   const suggestedTasks = tasks.filter((t) => t.status === "suggested");
   const queuedTasks = tasks.filter((t) => t.status === "queued");
   const inProgressTasks = tasks.filter((t) => t.status === "in_progress");
-  const doneTasks = tasks.filter((t) => t.status === "done");
+  const doneTasks = tasks.filter((t) => t.status === "done" || t.status === "completed");
+  const rejectedTasks = tasks.filter((t) => t.status === "rejected");
 
   if (loadingClient) {
     return (
@@ -120,6 +121,92 @@ export default function ClientPage() {
               Enviar para avaliação
             </button>
           </form>
+        </section>
+
+        {/* Demandas rejeitadas e concluídas */}
+        <section className="bg-gray-900 border-2 border-yellow-500 rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <h2 className="text-2xl font-bold text-black">Histórico de decisões</h2>
+            <p className="text-black/80 text-sm font-medium">
+              Veja os motivos de rejeição e os links das entregas feitas para você.
+            </p>
+          </div>
+          <div className="p-6 space-y-6">
+            {/* Rejeitadas */}
+            <div className="bg-gray-800 border border-yellow-500 rounded-lg p-4">
+              <h3 className="font-bold text-yellow-500 mb-3">Demandas rejeitadas</h3>
+              {rejectedTasks.length === 0 ? (
+                <p className="text-yellow-500/50 text-sm">Nenhuma demanda rejeitada até o momento.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-900 border-b border-yellow-500/40">
+                        <th className="text-left p-2 font-semibold text-yellow-500">Demanda</th>
+                        <th className="text-left p-2 font-semibold text-yellow-500">Motivo da rejeição</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rejectedTasks.map((task) => (
+                        <tr key={task.id} className="border-b border-yellow-500/20">
+                          <td className="p-2 align-top text-yellow-500 font-medium">
+                            {task.title}
+                          </td>
+                          <td className="p-2 text-yellow-400 whitespace-pre-line">
+                            {task.admin_rejection_reason || "Motivo ainda não informado."}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Concluídas / entregues */}
+            <div className="bg-gray-800 border border-yellow-500 rounded-lg p-4">
+              <h3 className="font-bold text-yellow-500 mb-3">Demandas concluídas / entregues</h3>
+              {doneTasks.length === 0 ? (
+                <p className="text-yellow-500/50 text-sm">Nenhuma entrega registrada ainda.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-900 border-b border-yellow-500/40">
+                        <th className="text-left p-2 font-semibold text-yellow-500">Demanda</th>
+                        <th className="text-left p-2 font-semibold text-yellow-500">Link de transparência</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {doneTasks.map((task) => (
+                        <tr key={task.id} className="border-b border-yellow-500/20">
+                          <td className="p-2 align-top text-yellow-500 font-medium">
+                            {task.title}
+                          </td>
+                          <td className="p-2">
+                            {task.admin_completion_link ? (
+                              <a
+                                href={task.admin_completion_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-yellow-400 underline hover:text-yellow-300"
+                              >
+                                Abrir entrega
+                              </a>
+                            ) : (
+                              <span className="text-yellow-500/60">
+                                Link ainda não informado.
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         </section>
 
         {/* Lista de Demandas - 3 Colunas */}

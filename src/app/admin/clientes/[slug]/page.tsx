@@ -6,6 +6,7 @@ import { useClientBySlug } from "@/hooks/useClientBySlug";
 import { useClientTasksBySprint } from "@/hooks/useClientTasksBySprint";
 import { getCurrentSprint, formatSprint } from "@/lib/utils";
 import { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function ClientAdminPage() {
   const params = useParams();
@@ -29,6 +30,22 @@ export default function ClientAdminPage() {
   const queuedSprint = sprintTasks.filter((t) => t.status === "queued");
   const inProgressSprint = sprintTasks.filter((t) => t.status === "in_progress");
   const doneSprint = sprintTasks.filter((t) => t.status === "done");
+
+  const updateRejectionReason = async (taskId: string, reason: string) => {
+    await supabase
+      .from("client_tasks")
+      .update({ admin_rejection_reason: reason })
+      .eq("id", taskId);
+    await refetch();
+  };
+
+  const updateCompletionLink = async (taskId: string, link: string) => {
+    await supabase
+      .from("client_tasks")
+      .update({ admin_completion_link: link })
+      .eq("id", taskId);
+    await refetch();
+  };
 
   const generateSummary = () => {
     const clientName = client?.name || "Cliente";
@@ -260,15 +277,26 @@ export default function ClientAdminPage() {
                             ✕
                           </button>
                         </div>
-                        <select
-                          value={task.status}
-                          onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                          className="w-full text-sm border-2 border-yellow-500 rounded-lg px-3 py-2 bg-gray-800 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
-                        >
-                          <option value="queued">Na fila</option>
-                          <option value="in_progress">Em produção</option>
-                          <option value="done">Entregue</option>
-                        </select>
+                        <div className="space-y-2">
+                          <select
+                            value={task.status}
+                            onChange={(e) => updateTaskStatus(task.id, e.target.value)}
+                            className="w-full text-sm border-2 border-yellow-500 rounded-lg px-3 py-2 bg-gray-800 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
+                          >
+                            <option value="queued">Na fila</option>
+                            <option value="in_progress">Em produção</option>
+                            <option value="done">Entregue</option>
+                          </select>
+                          {task.status === "done" && (
+                            <input
+                              type="url"
+                              defaultValue={task.admin_completion_link || ""}
+                              placeholder="Link da entrega (Docs, Sheets, Imgur, etc.)"
+                              onBlur={(e) => updateCompletionLink(task.id, e.target.value)}
+                              className="w-full text-xs border border-yellow-500 rounded px-2 py-1 bg-gray-900 text-yellow-500 placeholder-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                            />
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
