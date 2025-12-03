@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentSprint } from "@/lib/utils";
+
+type TaskStatus = 'suggested' | 'queued' | 'in_progress' | 'done';
 
 interface Task {
   id: string;
   title: string;
   details?: string;
-  status: string;
+  status: TaskStatus;
   client_id: string;
   created_by: string;
   created_at: string;
@@ -22,7 +24,7 @@ export function useClientTasksBySprint(clientId: string | undefined) {
 
   const currentSprint = getCurrentSprint();
 
-  const load = () => {
+  const load = useCallback(async () => {
     if (!clientId) {
       setLoading(false);
       return;
@@ -31,85 +33,97 @@ export function useClientTasksBySprint(clientId: string | undefined) {
     setLoading(true);
     setError(null);
 
-    supabase
-      .from("client_tasks")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: false })
-      .then(({ data, error: queryError }) => {
-        if (queryError) {
-          setError(new Error(queryError.message));
-          setBacklogTasks([]);
-          setSprintTasks([]);
-        } else {
-          const tasks = (data as Task[]) || [];
-          // Backlog: tarefas sugeridas (sem sprint_key ou sprint_key diferente da atual)
-          setBacklogTasks(
-            tasks.filter((t) => t.status === "suggested")
-          );
-          // Sprint atual: tarefas com sprint_key atual e status queued, in_progress, done
-          setSprintTasks(
-            tasks.filter(
-              (t) =>
-                t.sprint_key === currentSprint &&
-                ["queued", "in_progress", "done"].includes(t.status)
-            )
-          );
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err : new Error("Erro desconhecido"));
-        setLoading(false);
-      });
-  };
+    try {
+      const { data, error: queryError } = await supabase
+        .from("client_tasks")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      await load();
-    };
-    fetchData();
+      if (queryError) {
+        throw new Error(`Failed to fetch tasks: ${queryError.message}`);
+      }
+
+      const tasks = (data as Task[]) || [];
+      
+      // Backlog: tarefas sugeridas
+      setBacklogTasks(tasks.filter((t) => t.status === "suggested"));
+      
+      // Sprint atual: tarefas com sprint_key atual e status queued, in_progress, done
+      setSprintTasks(
+        tasks.filter(
+          (t) =>
+            t.sprint_key === currentSprint &&
+            ["queued", "in_progress", "done"].includes(t.status)
+        )
+      );
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro desconhecido ao carregar tarefas");
+      console.error("Error loading tasks:", error);
+      setError(error);
+    } finally {
+      setLoading(false);
+    }
   }, [clientId, currentSprint]);
 
-  const approveTask = async (taskId: string) => {
-    const { error: updateError } = await supabase
-      .from("client_tasks")
-      .update({
-        status: "queued",
-        sprint_key: currentSprint,
-      })
-      .eq("id", taskId);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-    if (updateError) {
-      setError(new Error(updateError.message));
-    } else {
-      load();
+  const approveTask = async (taskId: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("client_tasks")
+        .update({
+          status: "queued",
+          sprint_key: currentSprint,
+        })
+        .eq("id", taskId);
+
+      if (updateError) {
+        throw new Error(`Failed to approve task: ${updateError.message}`);
+      }
+      await load();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro desconhecido ao aprovar tarefa");
+      console.error("Error approving task:", error);
+      setError(error);
     }
   };
 
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
-    const { error: updateError } = await supabase
-      .from("client_tasks")
-      .update({ status: newStatus })
-      .eq("id", taskId);
+  const updateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("client_tasks")
+        .update({ status: newStatus })
+        .eq("id", taskId);
 
-    if (updateError) {
-      setError(new Error(updateError.message));
-    } else {
-      load();
+      if (updateError) {
+        throw new Error(`Failed to update task status: ${updateError.message}`);
+      }
+      await load();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro desconhecido ao atualizar status da tarefa");
+      console.error("Error updating task status:", error);
+      setError(error);
     }
   };
 
   const deleteTask = async (taskId: string) => {
-    const { error: deleteError } = await supabase
-      .from("client_tasks")
-      .delete()
-      .eq("id", taskId);
+    try {
+      const { error: deleteError } = await supabase
+        .from("client_tasks")
+        .delete()
+        .eq("id", taskId);
 
-    if (deleteError) {
-      setError(new Error(deleteError.message));
-    } else {
-      load();
+      if (deleteError) {
+        throw new Error(`Failed to delete task: ${deleteError.message}`);
+      }
+      await load();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro desconhecido ao deletar tarefa");
+      console.error("Error deleting task:", error);
+      setError(error);
     }
   };
 
