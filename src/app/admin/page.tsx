@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useAllTasks } from "@/hooks/useAllTasks";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminPage() {
   const { clients, loading: loadingClients, error: clientsError, refetch: refetchClients } = useAllClients();
@@ -42,6 +43,11 @@ export default function AdminPage() {
       default:
         return status;
     }
+  };
+
+  const getClientSlug = (clientId: string) => {
+    const client = clients.find((c) => c.id === clientId);
+    return client?.slug ?? "-";
   };
 
   return (
@@ -217,8 +223,10 @@ export default function AdminPage() {
                       <div className="flex justify-between items-center pt-4 border-t border-yellow-500/30">
                         <div className="flex items-center gap-4 text-sm text-yellow-400">
                           <span className="flex items-center gap-1">
-                            <strong className="text-yellow-500">Criado por:</strong>
-                            {task.created_by}
+                            <strong className="text-yellow-500">Cliente:</strong>
+                            <code className="bg-black/60 border border-yellow-500/60 text-yellow-400 px-2 py-0.5 rounded text-xs font-mono">
+                              {getClientSlug(task.client_id)}
+                            </code>
                           </span>
                           <span className="flex items-center gap-1">
                             <strong className="text-yellow-500">Data:</strong>
@@ -232,18 +240,35 @@ export default function AdminPage() {
                           </span>
                         </div>
 
-                        <select
-                          value={task.status}
-                          onChange={(e) =>
-                            handleStatusChange(task.id, e.target.value)
-                          }
-                          className="px-4 py-2 border-2 border-yellow-500 rounded-lg bg-gray-900 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
-                        >
-                          <option value="suggested">Sugerida</option>
-                          <option value="in_progress">Em Progresso</option>
-                          <option value="completed">Concluída</option>
-                          <option value="rejected">Rejeitada</option>
-                        </select>
+                        <div className="flex flex-col gap-2 w-64">
+                          <select
+                            value={task.status}
+                            onChange={(e) =>
+                              handleStatusChange(task.id, e.target.value)
+                            }
+                            className="px-4 py-2 border-2 border-yellow-500 rounded-lg bg-gray-900 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
+                          >
+                            <option value="suggested">Sugerida</option>
+                            <option value="in_progress">Em Progresso</option>
+                            <option value="completed">Concluída</option>
+                            <option value="rejected">Rejeitada</option>
+                          </select>
+                          {task.status === "rejected" && (
+                            <textarea
+                              defaultValue={task.admin_rejection_reason || ""}
+                              placeholder="Motivo da rejeição (visível para o cliente)"
+                              onBlur={async (e) => {
+                                await supabase
+                                  .from("client_tasks")
+                                  .update({ admin_rejection_reason: e.target.value })
+                                  .eq("id", task.id);
+                                await refetchTasks();
+                              }}
+                              className="w-full text-xs border border-yellow-500 rounded px-2 py-1 bg-gray-900 text-yellow-500 placeholder-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500 resize-none"
+                              rows={2}
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))

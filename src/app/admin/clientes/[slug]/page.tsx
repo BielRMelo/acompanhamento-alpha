@@ -183,7 +183,7 @@ export default function ClientAdminPage() {
                           </div>
                         </td>
                         <td className="p-4">
-                          <span className="text-yellow-400">{task.created_by}</span>
+                          <span className="text-yellow-400">{client.slug}</span>
                         </td>
                         <td className="p-4">
                           <div className="flex gap-2">
@@ -348,15 +348,24 @@ export default function ClientAdminPage() {
                             ✕
                           </button>
                         </div>
-                        <select
-                          value={task.status}
-                          onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                          className="w-full text-sm border-2 border-yellow-500 rounded-lg px-3 py-2 bg-gray-800 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
-                        >
-                          <option value="queued">Na fila</option>
-                          <option value="in_progress">Em produção</option>
-                          <option value="done">Entregue</option>
-                        </select>
+                        <div className="space-y-2">
+                          <select
+                            value={task.status}
+                            onChange={(e) => updateTaskStatus(task.id, e.target.value)}
+                            className="w-full text-sm border-2 border-yellow-500 rounded-lg px-3 py-2 bg-gray-800 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
+                          >
+                            <option value="queued">Na fila</option>
+                            <option value="in_progress">Em produção</option>
+                            <option value="done">Entregue</option>
+                          </select>
+                          <input
+                            type="url"
+                            defaultValue={task.admin_completion_link || ""}
+                            placeholder="Link da entrega (Docs, Sheets, Imgur, etc.)"
+                            onBlur={(e) => updateCompletionLink(task.id, e.target.value)}
+                            className="w-full text-xs border border-yellow-500 rounded px-2 py-1 bg-gray-900 text-yellow-500 placeholder-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                          />
+                        </div>
                       </div>
                     ))
                   )}

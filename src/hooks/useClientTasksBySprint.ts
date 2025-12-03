@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentSprint } from "@/lib/utils";
 
-export type TaskStatus = 'suggested' | 'queued' | 'in_progress' | 'done';
+export type TaskStatus = 'suggested' | 'queued' | 'in_progress' | 'done' | 'completed' | 'rejected';
 type TaskStatusUpdate = Exclude<TaskStatus, 'suggested'>;
 
 interface Task {
