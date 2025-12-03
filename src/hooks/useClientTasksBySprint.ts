@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentSprint } from "@/lib/utils";
 
-type TaskStatus = 'suggested' | 'queued' | 'in_progress' | 'done';
+export type TaskStatus = 'suggested' | 'queued' | 'in_progress' | 'done';
+type TaskStatusUpdate = Exclude<TaskStatus, 'suggested'>;
 
 interface Task {
   id: string;
@@ -91,15 +92,21 @@ export function useClientTasksBySprint(clientId: string | undefined) {
     }
   };
 
-  const updateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
+  const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
+      // Ensure the status is one of the allowed values
+      const validStatus: TaskStatusUpdate[] = ['queued', 'in_progress', 'done'];
+      const statusToUpdate = validStatus.includes(newStatus as TaskStatusUpdate) 
+        ? newStatus as TaskStatusUpdate 
+        : 'queued';
+
       const { error: updateError } = await supabase
         .from("client_tasks")
-        .update({ status: newStatus })
+        .update({ status: statusToUpdate })
         .eq("id", taskId);
 
       if (updateError) {
-        throw new Error(`Failed to update task status: ${updateError.message}`);
+        throw new Error(`Falha ao atualizar status da tarefa: ${updateError.message}`);
       }
       await load();
     } catch (err) {
