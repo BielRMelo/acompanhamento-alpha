@@ -19,27 +19,32 @@ export function useClientBySlug(slug: string | undefined) {
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    const loadClient = async () => {
+      setLoading(true);
+      setError(null);
 
-    supabase
-      .from("clients")
-      .select("*")
-      .eq("slug", slug)
-      .single()
-      .then(({ data, error: queryError }) => {
+      try {
+        const { data, error: queryError } = await supabase
+          .from("clients")
+          .select("*")
+          .eq("slug", slug)
+          .single();
+
         if (queryError) {
           setError(new Error(queryError.message));
           setClient(null);
         } else {
           setClient(data as Client);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         setError(err instanceof Error ? err : new Error("Erro desconhecido"));
+        setClient(null);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    loadClient();
   }, [slug]);
 
   return { client, loading, error };

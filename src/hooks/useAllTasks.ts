@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { TaskStatus } from "./useClientTasksBySprint";
 
 interface Task {
   id: string;
   title: string;
   details?: string;
-  status: string;
+  status: TaskStatus;
   client_id: string;
   created_by: string;
   created_at: string;
@@ -18,54 +19,68 @@ export function useAllTasks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const load = () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    supabase
-      .from("client_tasks")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data, error: queryError }) => {
-        if (queryError) {
-          setError(new Error(queryError.message));
-          setTasks([]);
-        } else {
-          setTasks((data as Task[]) || []);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err : new Error("Erro desconhecido"));
-        setLoading(false);
-      });
-  };
+    try {
+      const { data, error: queryError } = await supabase
+        .from("client_tasks")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      await load();
-    };
-    fetchData();
+      if (queryError) {
+        throw new Error(`Falha ao carregar tarefas: ${queryError.message}`);
+      }
+
+      setTasks((data as Task[]) || []);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro desconhecido ao carregar tarefas");
+      console.error("Error loading tasks:", error);
+      setError(error);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   const updateTaskStatus = async (taskId: string, newStatus: string, sprintKey?: string) => {
-    const updateData: { status: string; sprint_key?: string } = { status: newStatus };
-    if (sprintKey) {
-      updateData.sprint_key = sprintKey;
-    }
+    try {
+      const updateData: { status: TaskStatus; sprint_key?: string } = { 
+        status: newStatus as TaskStatus 
+      };
+      
+      if (sprintKey) {
+        updateData.sprint_key = sprintKey;
+      }
 
-    const { error: updateError } = await supabase
-      .from("client_tasks")
-      .update(updateData)
-      .eq("id", taskId);
+      const { error: updateError } = await supabase
+        .from("client_tasks")
+        .update(updateData)
+        .eq("id", taskId);
 
-    if (updateError) {
-      setError(new Error(updateError.message));
-    } else {
-      load();
+      if (updateError) {
+        throw new Error(`Falha ao atualizar status: ${updateError.message}`);
+      }
+      
+      await load();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro desconhecido ao atualizar tarefa");
+      console.error("Error updating task status:", error);
+      setError(error);
     }
   };
 
-  return { tasks, loading, error, refetch: load, updateTaskStatus };
+  return {
+    tasks,
+    loading,
+    error,
+    refetch: load,
+    updateTaskStatus,
+  };
 }
 

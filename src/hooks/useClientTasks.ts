@@ -18,7 +18,7 @@ export function useClientTasks(clientId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const load = () => {
+  const load = async () => {
     if (!clientId) {
       setLoading(false);
       return;
@@ -27,24 +27,24 @@ export function useClientTasks(clientId: string | undefined) {
     setLoading(true);
     setError(null);
 
-    supabase
-      .from("client_tasks")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: false })
-      .then(({ data, error: queryError }) => {
-        if (queryError) {
-          setError(new Error(queryError.message));
-          setTasks([]);
-        } else {
-          setTasks((data as Task[]) || []);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err : new Error("Erro desconhecido"));
-        setLoading(false);
-      });
+    try {
+      const { data, error: queryError } = await supabase
+        .from("client_tasks")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false });
+
+      if (queryError) {
+        throw new Error(queryError.message);
+      }
+
+      setTasks((data as Task[]) || []);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Erro desconhecido"));
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
