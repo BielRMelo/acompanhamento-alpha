@@ -133,7 +133,7 @@ export default function AdminPage() {
                             </code>
                           </td>
                           <td className="p-4">
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <Link
                                 href={`/admin/clientes/${client.slug}`}
                                 className="inline-flex items-center px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 transition-colors text-sm font-medium shadow-sm border-2 border-yellow-400"
@@ -147,6 +147,22 @@ export default function AdminPage() {
                               >
                                 Ver Painel Cliente
                               </Link>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const base = typeof window !== "undefined" ? window.location.origin : "";
+                                  const url = `${base}/c/${client.slug}`;
+                                  try {
+                                    await navigator.clipboard.writeText(url);
+                                    alert("Link do painel do cliente copiado ✅");
+                                  } catch {
+                                    alert("Não foi possível copiar o link. Copie manualmente: " + url);
+                                  }
+                                }}
+                                className="inline-flex items-center px-3 py-2 bg-black border-2 border-yellow-500 text-yellow-500 rounded-lg hover:bg-gray-900 transition-colors text-xs font-medium shadow-sm"
+                              >
+                                Copiar link
+                              </button>
                             </div>
                           </td>
                         </tr>
