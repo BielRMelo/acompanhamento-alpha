@@ -64,7 +64,12 @@ export function useClientTasksBySprint(clientId: string | undefined) {
       });
   };
 
-  useEffect(() => load(), [clientId, currentSprint]);
+  useEffect(() => {
+    const fetchData = async () => {
+      await load();
+    };
+    fetchData();
+  }, [clientId, currentSprint]);
 
   const approveTask = async (taskId: string) => {
     const { error: updateError } = await supabase

@@ -41,7 +41,12 @@ export function useAllTasks() {
       });
   };
 
-  useEffect(() => load(), []);
+  useEffect(() => {
+    const fetchData = async () => {
+      await load();
+    };
+    fetchData();
+  }, []);
 
   const updateTaskStatus = async (taskId: string, newStatus: string, sprintKey?: string) => {
     const updateData: { status: string; sprint_key?: string } = { status: newStatus };

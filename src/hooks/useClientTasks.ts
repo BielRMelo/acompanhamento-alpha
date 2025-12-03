@@ -47,7 +47,12 @@ export function useClientTasks(clientId: string | undefined) {
       });
   };
 
-  useEffect(() => load(), [clientId]);
+  useEffect(() => {
+    const fetchData = async () => {
+      await load();
+    };
+    fetchData();
+  }, [clientId]);
 
   const createTask = async (title: string, details?: string) => {
     if (!clientId) return;

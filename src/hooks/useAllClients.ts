@@ -36,7 +36,12 @@ export function useAllClients() {
     }
   };
 
-  useEffect(() => load(), []);
+  useEffect(() => {
+    const fetchData = async () => {
+      await load();
+    };
+    fetchData();
+  }, []);
 
   return { clients, loading, error, refetch: load };
 }
