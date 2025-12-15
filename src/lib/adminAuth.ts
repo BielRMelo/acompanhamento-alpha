@@ -34,19 +34,19 @@ export type AdminSessionPayload = {
 };
 
 export function getAdminEmail() {
-  const email = process.env.ADMIN_EMAIL;
+  const email = process.env.ADMIN_EMAIL?.trim();
   if (!email) throw new Error("Missing ADMIN_EMAIL env var");
   return email;
 }
 
 export function getAdminPassword() {
-  const password = process.env.ADMIN_PASSWORD;
+  const password = process.env.ADMIN_PASSWORD?.trim();
   if (!password) throw new Error("Missing ADMIN_PASSWORD env var");
   return password;
 }
 
 export function getAdminSecret() {
-  const secret = process.env.ADMIN_AUTH_SECRET;
+  const secret = process.env.ADMIN_AUTH_SECRET?.trim();
   if (!secret) {
     throw new Error("Missing ADMIN_AUTH_SECRET env var");
   }
