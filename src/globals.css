@@ -1,35 +1,48 @@
 @import "tailwindcss";
+@import "@fontsource/sora/400.css";
+@import "@fontsource/sora/500.css";
+@import "@fontsource/sora/600.css";
+@import "@fontsource/sora/700.css";
 
 :root {
-  --background: #000000;
-  --foreground: #FFD700;
-  --yellow-primary: #FFD700;
-  --yellow-secondary: #FFC107;
-  --yellow-accent: #FFEB3B;
-  --black-primary: #000000;
-  --black-secondary: #1a1a1a;
-  --black-tertiary: #2d2d2d;
+  --background: 220 15% 8%;
+  --foreground: 0 0% 98%;
+  --primary: 32 95% 55%;
+  --secondary: 220 15% 16%;
+  --muted: 220 15% 18%;
+  --border: 220 15% 20%;
+  --card: 220 15% 11%;
+  --radius: 12px;
+
+  --shadow-elevated: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 18px 60px rgba(245, 158, 11, 0.18);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-secondary: hsl(var(--secondary));
+  --color-muted: hsl(var(--muted));
+  --color-border: hsl(var(--border));
+  --color-card: hsl(var(--card));
+  --radius-lg: var(--radius);
 }
 
 * {
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Sora", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Sora", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
+  text-rendering: geometricPrecision;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -45,4 +58,145 @@ p {
 button, a {
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35);
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.3s ease-out both;
+}
+
+.glass {
+  background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.03)
+    ),
+    hsl(var(--card));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(24px);
+}
+
+.glow {
+  box-shadow: var(--shadow-elevated), var(--shadow-glow);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: #0b0f16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-glow);
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-elevated), 0 18px 70px rgba(245, 158, 11, 0.22);
+}
+
+.btn-glass {
+  background: rgba(255, 255, 255, 0.04);
+  color: hsl(var(--foreground));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px);
+  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.input-dark {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: hsl(var(--foreground));
+  border-radius: var(--radius);
+}
+
+ .input-dark option {
+   color: #0b0f14;
+   background: #ffffff;
+ }
+
+.input-dark::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.badge-success {
+  background: rgba(34, 197, 94, 0.16);
+  color: rgb(134, 239, 172);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.16);
+  color: rgb(253, 230, 138);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.badge-destructive {
+  background: rgba(239, 68, 68, 0.16);
+  color: rgb(254, 202, 202);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+  border-radius: var(--radius);
 }

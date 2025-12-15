@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-interface Client {
+export interface Client {
   id: string;
   name: string;
   slug: string;
-  [key: string]: unknown;
+  access_code?: string | null;
+  plan_id: string | null;
+  current_sprint: number | null;
+  created_at: string;
 }
 
 export function useAllClients() {
@@ -13,7 +16,7 @@ export function useAllClients() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -34,15 +37,59 @@ export function useAllClients() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      await load();
-    };
-    fetchData();
   }, []);
 
-  return { clients, loading, error, refetch: load };
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const updateClientPlan = async (clientId: string, planId: string | null) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("clients")
+        .update({ plan_id: planId })
+        .eq("id", clientId);
+
+      if (updateError) {
+        throw new Error(`Falha ao atualizar plano: ${updateError.message}`);
+      }
+
+      await load();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro ao atualizar plano");
+      console.error("Error updating client plan:", error);
+      setError(error);
+      throw error;
+    }
+  };
+
+  const updateClientSprint = async (clientId: string, sprintNumber: number) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("clients")
+        .update({ current_sprint: sprintNumber })
+        .eq("id", clientId);
+
+      if (updateError) {
+        throw new Error(`Falha ao atualizar sprint: ${updateError.message}`);
+      }
+
+      await load();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro ao atualizar sprint");
+      console.error("Error updating client sprint:", error);
+      setError(error);
+      throw error;
+    }
+  };
+
+  return { 
+    clients, 
+    loading, 
+    error, 
+    refetch: load,
+    updateClientPlan,
+    updateClientSprint,
+  };
 }
 

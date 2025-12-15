@@ -7,6 +7,7 @@ interface Task {
   title: string;
   details?: string;
   status: TaskStatus;
+  alteration_count?: number;
   client_id: string;
   created_by: string;
   created_at: string;

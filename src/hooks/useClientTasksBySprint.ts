@@ -2,30 +2,40 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentSprint } from "@/lib/utils";
 
-export type TaskStatus = 'suggested' | 'queued' | 'in_progress' | 'done' | 'completed' | 'rejected';
+export type TaskStatus = 'suggested' | 'queued' | 'in_progress' | 'alteration' | 'done' | 'completed' | 'rejected';
 type TaskStatusUpdate = Exclude<TaskStatus, 'suggested'>;
+
+interface TaskStep {
+  id: string;
+  task_id: string;
+  step_order: number;
+  title: string;
+  done: boolean;
+}
 
 interface Task {
   id: string;
   title: string;
   details?: string;
   status: TaskStatus;
+  alteration_count?: number;
   client_id: string;
   created_by: string;
   created_at: string;
   sprint_key?: string;
   admin_rejection_reason?: string;
   admin_completion_link?: string;
+  client_task_steps?: TaskStep[];
   [key: string]: unknown;
 }
 
-export function useClientTasksBySprint(clientId: string | undefined) {
+export function useClientTasksBySprint(clientId: string | undefined, sprintKeyOverride?: string) {
   const [backlogTasks, setBacklogTasks] = useState<Task[]>([]);
   const [sprintTasks, setSprintTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const currentSprint = getCurrentSprint();
+  const currentSprint = sprintKeyOverride ?? getCurrentSprint();
 
   const load = useCallback(async () => {
     if (!clientId) {
@@ -39,7 +49,7 @@ export function useClientTasksBySprint(clientId: string | undefined) {
     try {
       const { data, error: queryError } = await supabase
         .from("client_tasks")
-        .select("*")
+        .select("*, client_task_steps(*)")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false });
 
@@ -57,7 +67,7 @@ export function useClientTasksBySprint(clientId: string | undefined) {
         tasks.filter(
           (t) =>
             t.sprint_key === currentSprint &&
-            ["queued", "in_progress", "done"].includes(t.status)
+            ["queued", "in_progress", "alteration", "done"].includes(t.status)
         )
       );
     } catch (err) {
@@ -97,14 +107,25 @@ export function useClientTasksBySprint(clientId: string | undefined) {
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
       // Ensure the status is one of the allowed values
-      const validStatus: TaskStatusUpdate[] = ['queued', 'in_progress', 'done'];
-      const statusToUpdate = validStatus.includes(newStatus as TaskStatusUpdate) 
-        ? newStatus as TaskStatusUpdate 
+      const validStatus: TaskStatusUpdate[] = ['queued', 'in_progress', 'alteration', 'done', 'completed', 'rejected'];
+      const statusToUpdate = validStatus.includes(newStatus as TaskStatusUpdate)
+        ? (newStatus as TaskStatusUpdate)
         : 'queued';
+
+      const currentTask = sprintTasks.find((t) => t.id === taskId) || backlogTasks.find((t) => t.id === taskId);
+      const movingIntoAlteration = statusToUpdate === 'alteration' && currentTask?.status !== 'alteration';
+      const nextAlterationCount = movingIntoAlteration
+        ? (Number(currentTask?.alteration_count || 0) + 1)
+        : undefined;
+
+      const updatePayload: { status: TaskStatus; alteration_count?: number } = { status: statusToUpdate as TaskStatus };
+      if (typeof nextAlterationCount === 'number') {
+        updatePayload.alteration_count = nextAlterationCount;
+      }
 
       const { error: updateError } = await supabase
         .from("client_tasks")
-        .update({ status: statusToUpdate })
+        .update(updatePayload)
         .eq("id", taskId);
 
       if (updateError) {
@@ -114,6 +135,25 @@ export function useClientTasksBySprint(clientId: string | undefined) {
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Erro desconhecido ao atualizar status da tarefa");
       console.error("Error updating task status:", error);
+      setError(error);
+    }
+  };
+
+  const updateStepDone = async (stepId: string, done: boolean) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("client_task_steps")
+        .update({ done })
+        .eq("id", stepId);
+
+      if (updateError) {
+        throw new Error(`Falha ao atualizar subtarefa: ${updateError.message}`);
+      }
+
+      await load();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Erro desconhecido ao atualizar subtarefa");
+      console.error("Error updating task step:", error);
       setError(error);
     }
   };
@@ -144,6 +184,7 @@ export function useClientTasksBySprint(clientId: string | undefined) {
     refetch: load,
     approveTask,
     updateTaskStatus,
+    updateStepDone,
     deleteTask,
     currentSprint,
   };

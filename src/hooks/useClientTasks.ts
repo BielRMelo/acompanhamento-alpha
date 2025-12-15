@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+interface TaskStep {
+  id: string;
+  task_id: string;
+  step_order: number;
+  title: string;
+  done: boolean;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -12,6 +20,7 @@ interface Task {
   sprint_key?: string;
   admin_rejection_reason?: string;
   admin_completion_link?: string;
+  client_task_steps?: TaskStep[];
   [key: string]: unknown;
 }
 
@@ -32,7 +41,7 @@ export function useClientTasks(clientId: string | undefined) {
     try {
       const { data, error: queryError } = await supabase
         .from("client_tasks")
-        .select("*")
+        .select("*, client_task_steps(*)")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false });
 

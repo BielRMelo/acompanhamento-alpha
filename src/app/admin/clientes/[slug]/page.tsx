@@ -4,14 +4,18 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useClientBySlug } from "@/hooks/useClientBySlug";
 import { useClientTasksBySprint } from "@/hooks/useClientTasksBySprint";
-import { getCurrentSprint, formatSprint } from "@/lib/utils";
+import { formatSprint } from "@/lib/utils";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 
 export default function ClientAdminPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { client, loading: loadingClient, error: clientError } = useClientBySlug(slug);
+
+  const currentSprintNumber = (client as any)?.current_sprint ?? 0;
+  const sprintKeyOverride = `sprint-${currentSprintNumber}`;
   const {
     backlogTasks,
     sprintTasks,
@@ -20,15 +24,16 @@ export default function ClientAdminPage() {
     refetch,
     approveTask,
     updateTaskStatus,
+    updateStepDone,
     deleteTask,
     currentSprint,
-  } = useClientTasksBySprint(client?.id);
+  } = useClientTasksBySprint(client?.id, sprintKeyOverride);
 
   const [showSummary, setShowSummary] = useState(false);
 
   // Agrupar tarefas da sprint por status
   const queuedSprint = sprintTasks.filter((t) => t.status === "queued");
-  const inProgressSprint = sprintTasks.filter((t) => t.status === "in_progress");
+  const inProgressSprint = sprintTasks.filter((t) => t.status === "in_progress" || t.status === "alteration");
   const doneSprint = sprintTasks.filter((t) => t.status === "done");
 
   const updateRejectionReason = async (taskId: string, reason: string) => {
@@ -49,7 +54,7 @@ export default function ClientAdminPage() {
 
   const generateSummary = () => {
     const clientName = client?.name || "Cliente";
-    const sprintFormatted = formatSprint(currentSprint);
+    const sprintFormatted = `Sprint ${currentSprintNumber}`;
 
     let summary = `CRONOGRAMA SEMANAL — ${clientName.toUpperCase()}\n`;
     summary += `${sprintFormatted}\n\n`;
@@ -86,15 +91,15 @@ export default function ClientAdminPage() {
   const copyToClipboard = () => {
     const summary = generateSummary();
     navigator.clipboard.writeText(summary);
-    alert("Resumo copiado para a área de transferência! ✅");
+    toast.success("Resumo copiado", { description: "Cole no WhatsApp/E-mail do cliente" });
   };
 
   if (loadingClient) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-4 border-yellow-500 mb-4"></div>
-          <p className="text-yellow-500 text-lg font-medium">Carregando...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-4 border-[hsl(var(--primary))] mb-4"></div>
+          <p className="text-[rgba(255,255,255,0.72)] text-lg font-medium">Carregando...</p>
         </div>
       </div>
     );
@@ -102,13 +107,13 @@ export default function ClientAdminPage() {
 
   if (clientError || !client) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6">
-        <div className="bg-gray-900 border-2 border-yellow-500 rounded-xl shadow-lg p-8 max-w-md w-full text-center">
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="glass glow p-8 max-w-md w-full text-center">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-yellow-500 mb-2">Cliente não encontrado</h2>
+          <h2 className="text-2xl font-bold mb-2">Cliente não encontrado</h2>
           <Link
             href="/admin"
-            className="mt-4 inline-block px-6 py-3 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 border-2 border-yellow-400"
+            className="mt-4 inline-block btn-primary px-6 py-3 font-semibold"
           >
             Voltar para Admin
           </Link>
@@ -118,26 +123,32 @@ export default function ClientAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      <main className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen overflow-x-hidden">
+      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 2xl:px-10 py-6 sm:py-8 space-y-8">
         {/* Header */}
-        <div className="bg-gray-900 border-2 border-yellow-500 rounded-xl shadow-md p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <nav className="text-sm text-yellow-400 mb-2">
-                <Link href="/admin" className="hover:text-yellow-500">
+        <div className="glass glow p-6">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 min-w-0">
+            <div className="min-w-0">
+              <nav className="text-sm text-[rgba(255,255,255,0.65)] mb-2 truncate">
+                <Link href="/admin" className="hover:opacity-90">
                   Clientes
                 </Link>
                 {" > "}
-                <span className="text-yellow-500 font-medium">{client.name}</span>
+                <span className="text-[hsl(var(--primary))] font-semibold">{client.name}</span>
               </nav>
-              <h1 className="text-5xl font-bold text-yellow-500 tracking-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight break-words">
                 Demandas - {client.name}
               </h1>
+              <p className="mt-2 text-sm sm:text-base text-[rgba(255,255,255,0.72)]">
+                Sprint atual: <span className="font-semibold">{currentSprintNumber === 0 ? "Sprint 0" : `Sprint ${currentSprintNumber}`}</span>
+                {currentSprint ? (
+                  <span className="ml-2 text-[rgba(255,255,255,0.55)]">({formatSprint(currentSprint)})</span>
+                ) : null}
+              </p>
             </div>
             <Link
               href="/admin"
-              className="px-6 py-3 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 transition-colors font-medium shadow-sm border-2 border-yellow-400"
+              className="btn-primary px-4 sm:px-6 py-3 font-semibold w-full sm:w-auto text-center"
             >
               ← Voltar
             </Link>
@@ -145,122 +156,151 @@ export default function ClientAdminPage() {
         </div>
 
         {/* Backlog */}
-        <section className="bg-gray-900 border-2 border-yellow-500 rounded-xl shadow-md overflow-hidden">
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-4">
-            <h2 className="text-2xl font-bold text-black">Backlog</h2>
+        <section className="glass glow overflow-hidden">
+          <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.08)]">
+            <h2 className="text-xl sm:text-2xl font-bold">Backlog</h2>
           </div>
           <div className="p-6">
             {loadingTasks ? (
               <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500"></div>
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[hsl(var(--primary))]"></div>
               </div>
             ) : backlogTasks.length === 0 ? (
-              <p className="text-yellow-500 text-center py-8">Nenhuma tarefa em avaliação.</p>
+              <p className="text-[rgba(255,255,255,0.72)] text-center py-8">Nenhuma tarefa em avaliação.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-800 border-b-2 border-yellow-500">
-                      <th className="text-left p-4 font-semibold text-yellow-500">Título</th>
-                      <th className="text-left p-4 font-semibold text-yellow-500">Criado por</th>
-                      <th className="text-left p-4 font-semibold text-yellow-500">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {backlogTasks.map((task, index) => (
-                      <tr
-                        key={task.id}
-                        className={`border-b border-yellow-500/20 hover:bg-gray-800 transition-colors ${
-                          index % 2 === 0 ? "bg-gray-900" : "bg-gray-800"
-                        }`}
-                      >
-                        <td className="p-4">
-                          <div>
-                            <p className="font-semibold text-yellow-500 text-base">{task.title}</p>
-                            {task.details && (
-                              <p className="text-base text-yellow-400 mt-2 leading-relaxed">{task.details}</p>
-                            )}
+              <>
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-3">
+                  {backlogTasks.map((task) => (
+                    <div key={task.id} className="glass p-4">
+                      <div className="min-w-0">
+                        <div className="font-semibold break-words">{task.title}</div>
+                        {task.details && (
+                          <div className="mt-2 text-sm text-[rgba(255,255,255,0.72)] break-words">
+                            {task.details}
                           </div>
-                        </td>
-                        <td className="p-4">
-                          <span className="text-yellow-400">{client.slug}</span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => approveTask(task.id)}
-                              className="px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 transition-colors text-sm font-medium shadow-sm border-2 border-yellow-400"
-                            >
-                              ✓ Aprovar para Sprint
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Tem certeza que deseja excluir a demanda "${task.title}"?`)) {
-                                  deleteTask(task.id);
-                                }
-                              }}
-                              className="px-4 py-2 bg-gray-700 border-2 border-yellow-500 text-yellow-500 rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium shadow-sm"
-                              title="Excluir demanda"
-                            >
-                              ✕ Excluir
-                            </button>
-                          </div>
-                        </td>
+                        )}
+                        <div className="mt-3 text-xs text-[rgba(255,255,255,0.65)]">
+                          Criado por: <span className="font-mono">{client.slug}</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => approveTask(task.id)}
+                          className="btn-primary px-4 py-2 text-sm font-semibold"
+                        >
+                          Aprovar para Sprint
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Tem certeza que deseja excluir a demanda "${task.title}"?`)) {
+                              deleteTask(task.id);
+                            }
+                          }}
+                          className="btn-glass px-4 py-2 text-sm font-semibold text-[rgb(254,202,202)]"
+                          title="Excluir demanda"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full min-w-[760px]">
+                    <thead>
+                      <tr className="border-b border-[rgba(255,255,255,0.08)]">
+                        <th className="text-left p-4 font-semibold text-[rgba(255,255,255,0.72)]">Título</th>
+                        <th className="text-left p-4 font-semibold text-[rgba(255,255,255,0.72)]">Criado por</th>
+                        <th className="text-left p-4 font-semibold text-[rgba(255,255,255,0.72)]">Ações</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {backlogTasks.map((task) => (
+                        <tr key={task.id} className="border-b border-[rgba(255,255,255,0.06)]">
+                          <td className="p-4">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-base break-words">{task.title}</p>
+                              {task.details && (
+                                <p className="text-sm text-[rgba(255,255,255,0.72)] mt-2 leading-relaxed break-words">{task.details}</p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-[rgba(255,255,255,0.65)] font-mono">{client.slug}</span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex gap-2 flex-wrap">
+                              <button onClick={() => approveTask(task.id)} className="btn-primary px-4 py-2 text-sm font-semibold">
+                                Aprovar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Tem certeza que deseja excluir a demanda "${task.title}"?`)) {
+                                    deleteTask(task.id);
+                                  }
+                                }}
+                                className="btn-glass px-4 py-2 text-sm font-semibold text-[rgb(254,202,202)]"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </section>
 
         {/* Sprint Atual */}
-        <section className="bg-gray-900 border-2 border-yellow-500 rounded-xl shadow-md overflow-hidden">
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-black">
-                Sprint Atual ({formatSprint(currentSprint)})
+        <section className="glass glow overflow-hidden">
+          <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.08)]">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold truncate">
+                Sprint Atual ({currentSprintNumber === 0 ? "Sprint 0" : `Sprint ${currentSprintNumber}`})
               </h2>
-              <button
-                onClick={() => refetch()}
-                className="px-4 py-2 bg-black text-yellow-500 rounded-lg hover:bg-gray-900 transition-colors font-medium shadow-sm border-2 border-yellow-500"
-              >
-                🔄 Atualizar
+              <button onClick={() => refetch()} className="btn-glass px-4 py-2 font-semibold">
+                Atualizar
               </button>
             </div>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Na fila */}
-              <div className="bg-gray-800 border-2 border-yellow-500 rounded-xl p-5">
+              <div className="glass p-5">
                 <div className="flex items-center gap-2 mb-5">
-                  <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center">
-                    <span className="text-black text-xl font-bold">↑</span>
+                  <div className="w-10 h-10 btn-primary rounded-xl flex items-center justify-center">
+                    <span className="text-[rgba(11,15,22,0.9)] text-xl font-bold">↑</span>
                   </div>
-                  <h3 className="font-bold text-lg text-yellow-500">Na fila</h3>
-                  <span className="ml-auto bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
+                  <h3 className="font-bold text-lg">Na fila</h3>
+                  <span className="ml-auto badge-warning text-xs font-bold px-2 py-1 rounded-full">
                     {queuedSprint.length}
                   </span>
                 </div>
                 <div className="space-y-3 min-h-[200px]">
                   {queuedSprint.length === 0 ? (
                     <div className="text-center py-8">
-                      <p className="text-yellow-500/50 text-sm">—</p>
+                      <p className="text-[rgba(255,255,255,0.55)] text-sm">—</p>
                     </div>
                   ) : (
                     queuedSprint.map((task) => (
                       <div
                         key={task.id}
-                        className="bg-gray-900 rounded-lg p-4 border-2 border-yellow-500 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-500/20 transition-all"
+                        className="glass p-4 transition-all hover:glow"
                       >
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <p className="text-base font-semibold text-yellow-500 leading-snug">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base font-semibold leading-snug break-words">
                               {task.title}
                             </p>
                             {task.details && (
-                              <p className="text-sm text-yellow-400 mt-2 line-clamp-2 leading-relaxed">
+                              <p className="text-sm text-[rgba(255,255,255,0.72)] mt-2 line-clamp-2 leading-relaxed">
                                 {task.details}
                               </p>
                             )}
@@ -271,7 +311,7 @@ export default function ClientAdminPage() {
                                 deleteTask(task.id);
                               }
                             }}
-                            className="ml-2 px-2 py-1 bg-gray-700 border border-yellow-500 text-yellow-500 rounded-lg hover:bg-gray-600 transition-colors text-xs font-medium flex-shrink-0"
+                            className="ml-2 btn-glass px-2 py-1 text-xs font-semibold text-[rgb(254,202,202)] flex-shrink-0"
                             title="Excluir demanda"
                           >
                             ✕
@@ -281,19 +321,53 @@ export default function ClientAdminPage() {
                           <select
                             value={task.status}
                             onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                            className="w-full text-sm border-2 border-yellow-500 rounded-lg px-3 py-2 bg-gray-800 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
+                            className="input-dark w-full text-sm px-3 py-2 font-medium focus:outline-none cursor-pointer"
                           >
                             <option value="queued">Na fila</option>
                             <option value="in_progress">Em produção</option>
+                            <option value="alteration">Alteração</option>
                             <option value="done">Entregue</option>
                           </select>
+                          {task.status === "alteration" && (
+                            <p className="text-xs text-[rgba(255,255,255,0.72)] mt-2">
+                              Alterações: <span className="font-bold">{(task as any).alteration_count ?? 0}</span>
+                            </p>
+                          )}
+
+                          {(task as any).client_task_steps?.length > 0 && (
+                            <details className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]">
+                              <summary className="cursor-pointer select-none px-3 py-2 flex items-center justify-between text-xs font-semibold">
+                                <span className="truncate">Subtarefas</span>
+                                <span className="text-[rgba(255,255,255,0.65)]">▾</span>
+                              </summary>
+                              <div className="px-3 pb-3 space-y-2">
+                                {(task as any).client_task_steps
+                                  .slice()
+                                  .sort((a: any, b: any) => (a.step_order ?? 0) - (b.step_order ?? 0))
+                                  .map((step: any) => (
+                                    <label key={step.id} className="flex items-center gap-2 text-xs text-[rgba(255,255,255,0.72)] min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!step.done}
+                                        onChange={(e) => updateStepDone(step.id, e.target.checked)}
+                                        className="h-4 w-4 accent-[hsl(var(--primary))]"
+                                      />
+                                      <span
+                                        className={`h-2 w-2 rounded-full ${step.done ? "bg-green-400" : "bg-[hsl(var(--primary))]"}`}
+                                      />
+                                      <span className={`min-w-0 truncate ${step.done ? "line-through opacity-70" : ""}`}>{step.title}</span>
+                                    </label>
+                                  ))}
+                              </div>
+                            </details>
+                          )}
                           {task.status === "done" && (
                             <input
                               type="url"
                               defaultValue={task.admin_completion_link || ""}
                               placeholder="Link da entrega (Docs, Sheets, Imgur, etc.)"
                               onBlur={(e) => updateCompletionLink(task.id, e.target.value)}
-                              className="w-full text-xs border border-yellow-500 rounded px-2 py-1 bg-gray-900 text-yellow-500 placeholder-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                              className="input-dark w-full text-xs px-3 py-2 focus:outline-none"
                             />
                           )}
                         </div>
@@ -304,34 +378,34 @@ export default function ClientAdminPage() {
               </div>
 
               {/* Em produção */}
-              <div className="bg-gray-800 border-2 border-yellow-500 rounded-xl p-5">
+              <div className="glass p-5">
                 <div className="flex items-center gap-2 mb-5">
-                  <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center">
-                    <span className="text-black text-xl font-bold">⚙️</span>
+                  <div className="w-10 h-10 btn-primary rounded-xl flex items-center justify-center">
+                    <span className="text-[rgba(11,15,22,0.9)] text-xl font-bold">⚙️</span>
                   </div>
-                  <h3 className="font-bold text-lg text-yellow-500">Em produção</h3>
-                  <span className="ml-auto bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
+                  <h3 className="font-bold text-lg">Em produção</h3>
+                  <span className="ml-auto badge-warning text-xs font-bold px-2 py-1 rounded-full">
                     {inProgressSprint.length}
                   </span>
                 </div>
                 <div className="space-y-3 min-h-[200px]">
                   {inProgressSprint.length === 0 ? (
                     <div className="text-center py-8">
-                      <p className="text-yellow-500/50 text-sm">—</p>
+                      <p className="text-[rgba(255,255,255,0.55)] text-sm">—</p>
                     </div>
                   ) : (
                     inProgressSprint.map((task) => (
                       <div
                         key={task.id}
-                        className="bg-gray-900 rounded-lg p-4 border-2 border-yellow-500 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-500/20 transition-all"
+                        className="glass p-4 transition-all hover:glow"
                       >
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <p className="text-base font-semibold text-yellow-500 leading-snug">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base font-semibold leading-snug break-words">
                               {task.title}
                             </p>
                             {task.details && (
-                              <p className="text-sm text-yellow-400 mt-2 line-clamp-2 leading-relaxed">
+                              <p className="text-sm text-[rgba(255,255,255,0.72)] mt-2 line-clamp-2 leading-relaxed">
                                 {task.details}
                               </p>
                             )}
@@ -342,7 +416,7 @@ export default function ClientAdminPage() {
                                 deleteTask(task.id);
                               }
                             }}
-                            className="ml-2 px-2 py-1 bg-gray-700 border border-yellow-500 text-yellow-500 rounded-lg hover:bg-gray-600 transition-colors text-xs font-medium flex-shrink-0"
+                            className="ml-2 btn-glass px-2 py-1 text-xs font-semibold text-[rgb(254,202,202)] flex-shrink-0"
                             title="Excluir demanda"
                           >
                             ✕
@@ -352,19 +426,53 @@ export default function ClientAdminPage() {
                           <select
                             value={task.status}
                             onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                            className="w-full text-sm border-2 border-yellow-500 rounded-lg px-3 py-2 bg-gray-800 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
+                            className="input-dark w-full text-sm px-3 py-2 font-medium focus:outline-none cursor-pointer"
                           >
                             <option value="queued">Na fila</option>
                             <option value="in_progress">Em produção</option>
+                            <option value="alteration">Alteração</option>
                             <option value="done">Entregue</option>
                           </select>
-                          <input
-                            type="url"
-                            defaultValue={task.admin_completion_link || ""}
-                            placeholder="Link da entrega (Docs, Sheets, Imgur, etc.)"
-                            onBlur={(e) => updateCompletionLink(task.id, e.target.value)}
-                            className="w-full text-xs border border-yellow-500 rounded px-2 py-1 bg-gray-900 text-yellow-500 placeholder-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                          />
+                          {task.status === "alteration" && (
+                            <p className="text-xs text-[rgba(255,255,255,0.72)] mt-2">
+                              Alterações: <span className="font-bold">{(task as any).alteration_count ?? 0}</span>
+                            </p>
+                          )}
+
+                          {(task as any).client_task_steps?.length > 0 && (
+                            <details className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]">
+                              <summary className="cursor-pointer select-none px-3 py-2 flex items-center justify-between text-xs font-semibold">
+                                <span className="truncate">Subtarefas</span>
+                                <span className="text-[rgba(255,255,255,0.65)]">▾</span>
+                              </summary>
+                              <div className="px-3 pb-3 space-y-2">
+                                {(task as any).client_task_steps
+                                  .slice()
+                                  .sort((a: any, b: any) => (a.step_order ?? 0) - (b.step_order ?? 0))
+                                  .map((step: any) => (
+                                    <label key={step.id} className="flex items-center gap-2 text-xs text-[rgba(255,255,255,0.72)] min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!step.done}
+                                        onChange={(e) => updateStepDone(step.id, e.target.checked)}
+                                        className="h-4 w-4 accent-[hsl(var(--primary))]"
+                                      />
+                                      <span className={`h-2 w-2 rounded-full ${step.done ? "bg-green-400" : "bg-[hsl(var(--primary))]"}`} />
+                                      <span className={`min-w-0 truncate ${step.done ? "line-through opacity-70" : ""}`}>{step.title}</span>
+                                    </label>
+                                  ))}
+                              </div>
+                            </details>
+                          )}
+                          {task.status === "done" && (
+                            <input
+                              type="url"
+                              defaultValue={task.admin_completion_link || ""}
+                              placeholder="Link da entrega (Docs, Sheets, Imgur, etc.)"
+                              onBlur={(e) => updateCompletionLink(task.id, e.target.value)}
+                              className="input-dark w-full text-xs px-3 py-2 focus:outline-none"
+                            />
+                          )}
                         </div>
                       </div>
                     ))
@@ -373,34 +481,34 @@ export default function ClientAdminPage() {
               </div>
 
               {/* Entregue */}
-              <div className="bg-gray-800 border-2 border-yellow-500 rounded-xl p-5">
+              <div className="glass p-5">
                 <div className="flex items-center gap-2 mb-5">
-                  <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center">
-                    <span className="text-black text-xl font-bold">✓</span>
+                  <div className="w-10 h-10 btn-primary rounded-xl flex items-center justify-center">
+                    <span className="text-[rgba(11,15,22,0.9)] text-xl font-bold">✓</span>
                   </div>
-                  <h3 className="font-bold text-lg text-yellow-500">Entregue</h3>
-                  <span className="ml-auto bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
+                  <h3 className="font-bold text-lg">Entregue</h3>
+                  <span className="ml-auto badge-success text-xs font-bold px-2 py-1 rounded-full">
                     {doneSprint.length}
                   </span>
                 </div>
                 <div className="space-y-3 min-h-[200px]">
                   {doneSprint.length === 0 ? (
                     <div className="text-center py-8">
-                      <p className="text-yellow-500/50 text-sm">—</p>
+                      <p className="text-[rgba(255,255,255,0.55)] text-sm">—</p>
                     </div>
                   ) : (
                     doneSprint.map((task) => (
                       <div
                         key={task.id}
-                        className="bg-gray-900 rounded-lg p-4 border-2 border-yellow-500 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-500/20 transition-all"
+                        className="glass p-4 transition-all hover:glow"
                       >
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <p className="text-base font-semibold text-yellow-500 leading-snug">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base font-semibold leading-snug break-words">
                               {task.title}
                             </p>
                             {task.details && (
-                              <p className="text-sm text-yellow-400 mt-2 line-clamp-2 leading-relaxed">
+                              <p className="text-sm text-[rgba(255,255,255,0.72)] mt-2 line-clamp-2 leading-relaxed">
                                 {task.details}
                               </p>
                             )}
@@ -411,7 +519,7 @@ export default function ClientAdminPage() {
                                 deleteTask(task.id);
                               }
                             }}
-                            className="ml-2 px-2 py-1 bg-gray-700 border border-yellow-500 text-yellow-500 rounded-lg hover:bg-gray-600 transition-colors text-xs font-medium flex-shrink-0"
+                            className="ml-2 btn-glass px-2 py-1 text-xs font-semibold text-[rgb(254,202,202)] flex-shrink-0"
                             title="Excluir demanda"
                           >
                             ✕
@@ -420,12 +528,39 @@ export default function ClientAdminPage() {
                         <select
                           value={task.status}
                           onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                          className="w-full text-sm border-2 border-yellow-500 rounded-lg px-3 py-2 bg-gray-800 text-yellow-500 font-medium hover:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all cursor-pointer"
+                          className="input-dark w-full text-sm px-3 py-2 font-medium focus:outline-none cursor-pointer"
                         >
                           <option value="queued">Na fila</option>
                           <option value="in_progress">Em produção</option>
+                          <option value="alteration">Alteração</option>
                           <option value="done">Entregue</option>
                         </select>
+
+                        {(task as any).client_task_steps?.length > 0 && (
+                          <details className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]">
+                            <summary className="cursor-pointer select-none px-3 py-2 flex items-center justify-between text-xs font-semibold">
+                              <span className="truncate">Subtarefas</span>
+                              <span className="text-[rgba(255,255,255,0.65)]">▾</span>
+                            </summary>
+                            <div className="px-3 pb-3 space-y-2">
+                              {(task as any).client_task_steps
+                                .slice()
+                                .sort((a: any, b: any) => (a.step_order ?? 0) - (b.step_order ?? 0))
+                                .map((step: any) => (
+                                  <label key={step.id} className="flex items-center gap-2 text-xs text-[rgba(255,255,255,0.72)] min-w-0">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!step.done}
+                                      onChange={(e) => updateStepDone(step.id, e.target.checked)}
+                                      className="h-4 w-4 accent-[hsl(var(--primary))]"
+                                    />
+                                    <span className={`h-2 w-2 rounded-full ${step.done ? "bg-green-400" : "bg-[hsl(var(--primary))]"}`} />
+                                    <span className={`min-w-0 truncate ${step.done ? "line-through opacity-70" : ""}`}>{step.title}</span>
+                                  </label>
+                                ))}
+                            </div>
+                          </details>
+                        )}
                       </div>
                     ))
                   )}
@@ -436,38 +571,38 @@ export default function ClientAdminPage() {
         </section>
 
         {/* Gerar Resumo */}
-        <section className="bg-gray-900 border-2 border-yellow-500 rounded-xl shadow-md overflow-hidden">
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-4">
-            <h2 className="text-2xl font-bold text-black">Resumo Semanal (KR1)</h2>
+        <section className="glass glow overflow-hidden">
+          <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.08)]">
+            <h2 className="text-xl sm:text-2xl font-bold">Resumo Semanal (KR1)</h2>
           </div>
           <div className="p-6">
             <button
               onClick={() => setShowSummary(!showSummary)}
-              className="w-full px-6 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black rounded-lg hover:from-yellow-400 hover:to-yellow-500 transition-all font-bold text-lg shadow-lg hover:shadow-xl hover:shadow-yellow-500/50 transform hover:-translate-y-0.5 border-2 border-yellow-400"
+              className="btn-primary w-full px-6 py-4 font-bold text-lg"
             >
               {showSummary ? "▲ Ocultar Resumo" : "📊 Gerar mensagem de resumo pro cliente"}
             </button>
 
             {showSummary && (
               <div className="mt-6 space-y-4">
-                <div className="bg-gray-800 rounded-lg p-4 border-2 border-yellow-500">
-                  <label className="block text-sm font-semibold text-yellow-500 mb-2">
+                <div className="glass p-4">
+                  <label className="block text-sm font-semibold mb-2">
                     Resumo formatado (pronto para copiar):
                   </label>
                   <textarea
                     readOnly
                     value={generateSummary()}
                     rows={15}
-                    className="w-full border-2 border-yellow-500 rounded-lg px-4 py-3 text-yellow-500 font-mono text-sm bg-black focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="input-dark w-full px-4 py-3 font-mono text-sm focus:outline-none"
                   />
                 </div>
                 <button
                   onClick={copyToClipboard}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black rounded-lg hover:from-yellow-400 hover:to-yellow-500 transition-all font-bold text-lg shadow-lg hover:shadow-xl hover:shadow-yellow-500/50 transform hover:-translate-y-0.5 border-2 border-yellow-400"
+                  className="btn-glass w-full px-6 py-4 font-bold text-lg"
                 >
                   📋 Copiar Resumo para Área de Transferência
                 </button>
-                <p className="text-sm text-yellow-400 text-center">
+                <p className="text-sm text-[rgba(255,255,255,0.65)] text-center">
                   Após copiar, cole no WhatsApp ou e-mail do cliente
                 </p>
               </div>
